@@ -8,3 +8,4 @@ cabal-dev
 .virthualenv
 *.errors
 *-x86_64-linux
+history

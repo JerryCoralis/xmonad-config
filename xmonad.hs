@@ -1,3 +1,13 @@
+---------------------------------------------------------------------------
+-- TB Schardl (neboat)
+-- 06/2013
+--
+-- XMonad configuration.
+--
+-- This configuration is designed to work with Gnome.  It includes key
+-- bindings for primarily browsing busy (i.e. nonempty) workspaces.
+--
+---------------------------------------------------------------------------
 import XMonad                hiding( (|||) )
 import XMonad.Util.Run
 import XMonad.Util.EZConfig  ( additionalKeys )
@@ -43,11 +53,23 @@ import Control.Monad ( liftM2, unless )
 import Data.Maybe    ( isJust )
 
 
+---------------------------------------------------------------------------
+-- Basic setup.
+---------------------------------------------------------------------------
+-- Use Super as mod
 myModMask            = mod4Mask
+
+-- Set focused border color
 myFocusedBorderColor = "#00adeb"
+
+-- Set up 12 workspaces, where workspaces 1 and 12 are "special"
 myWorkspaces = map show [1..12]
 mySpecialWS = ["1", "12"]
 
+
+---------------------------------------------------------------------------
+-- Management Hook
+---------------------------------------------------------------------------
 myManageHook = composeAll (
   [ manageHook gnomeConfig
   , className =? "Unity-2d-panel" --> doIgnore
@@ -57,6 +79,10 @@ myManageHook = composeAll (
   , className =? "Skype" --> doFloat
   ])
 
+
+---------------------------------------------------------------------------
+-- Layouts
+---------------------------------------------------------------------------
 myLayouts = defaultTall      |||
             renamed [Replace "emacsDev"] emacsDev |||
             spiral ratio     |||
@@ -64,6 +90,7 @@ myLayouts = defaultTall      |||
             simpleTabbed     |||            
             Mirror tiled     
   where
+    -- My preferred layout for working in Emacs.
     emacsDev    = Mirror $ ResizableTall 2 delta 0.85 []
     tiled       = ResizableTall nmaster delta ratio []
     defaultTall = ResizableTall nmaster delta (1/2) []
@@ -71,22 +98,33 @@ myLayouts = defaultTall      |||
     ratio       = toRational (2/(1 + sqrt 5 :: Double)) -- golden, thx Octoploid
     delta       = 0.03
 
+
+---------------------------------------------------------------------------
+-- Additional key bindings
+---------------------------------------------------------------------------
+    
+-- Helper function to skip empty workspaces
 skipEmpty :: (Eq i) => [W.Workspace i l a] -> [W.Workspace i l a]
 skipEmpty wss = filter (isJust . W.stack) wss
 
--- Bonus key bindings
+-- Helper function to first shift a window to another workspace and
+-- then follow it.
+shiftAndFollow :: WorkspaceId -> X()
+shiftAndFollow = liftM2 (>>) (windows . W.shift) (windows . W.greedyView)
+
+-- Additional key bindings
 myKeyBindings =
   [
-  --  ((myModMask, xK_p), spawn "exe=`dmenu_path | dmenu -i` && eval \"exec $exe\"")
+    --  ((myModMask, xK_p), spawn "exe=`dmenu_path | dmenu -i` && eval \"exec $exe\"")
     ((myModMask, xK_p), myShellPrompt defaultXPConfig { position=Top })
     
-  --, ((myModMask .|. shiftMask, xK_q), io (exitWith ExitSuccess))
+    --, ((myModMask .|. shiftMask, xK_q), io (exitWith ExitSuccess))
   , ((myModMask .|. shiftMask, xK_q), spawn "gnome-session-quit")
     
     -- changing sizes
   , ((myModMask .|. shiftMask, xK_h), sendMessage MirrorShrink)
   , ((myModMask .|. shiftMask, xK_l), sendMessage MirrorExpand)
-  --, ((myModMask, xK_BackSpace), spawn "~/.xmonad/showKeysScript")
+    -- , ((myModMask,               xK_BackSpace), spawn "~/.xmonad/showKeysScript")
     
      -- CycleWS setup
    , ((myModMask,               xK_Right), nextWS)
@@ -95,27 +133,30 @@ myKeyBindings =
    , ((myModMask,               xK_Up),    prevScreen)
    , ((myModMask .|. shiftMask, xK_Down),  shiftNextScreen)
    , ((myModMask .|. shiftMask, xK_Up),    shiftPrevScreen)
-   --, ((myModMask,               xK_grave), toggleWS' mySpecialWS) -- toggle workspaces, except for special workspaces
-   , ((myModMask,               xK_grave), do                     -- toggle nonempty workspaces, except for special workspaces
+     --, ((myModMask,               xK_grave), toggleWS' mySpecialWS) -- toggle workspaces, except for special workspaces
+   , ((myModMask,               xK_grave), do                       -- toggle busy workspaces, except for special workspaces
          hs' <- gets $ (flip skipTags) mySpecialWS . skipEmpty . W.hidden . windowset
-         unless (null hs') (windows . W.greedyView . W.tag $ head hs')
-     )
-   , ((myModMask,               xK_w), moveTo Next EmptyWS)  -- find next empty workspace
-   , ((myModMask,               xK_e), moveTo Prev EmptyWS)  -- find prev empty workspace
-   , ((myModMask,               xK_s), moveTo Next NonEmptyWS)  -- find next busy workspace
-   , ((myModMask,               xK_a), moveTo Prev NonEmptyWS)  -- find prev busy workspace
-   , ((myModMask .|. shiftMask, xK_s), shiftToNext >> nextWS)  -- shift to next workspace and follow
-   , ((myModMask .|. shiftMask, xK_a), shiftToPrev >> prevWS)  -- shift to prev workspace and follow 
-   , ((myModMask .|. shiftMask, xK_w),
-      doTo Next EmptyWS getSortByIndex
-      $ liftM2 (>>) (windows . W.shift) (windows . W.greedyView))  -- shift to next empty workspace and follow
-   , ((myModMask .|. shiftMask, xK_grave), do                      -- shift to last workspace and follow
-         hs' <- gets (W.hidden . windowset)
-         unless (null hs') ((liftM2 (>>) (windows . W.shift) (windows . W.greedyView)) . W.tag
-                            $ head hs'))
-   -- , ((myModMask .|. shiftMask, xK_a),
-   --    doTo Prev EmptyWS getSortByIndex
-   --    $ liftM2 (>>) (windows . W.shift) (windows . W.greedyView))  -- shift to next empty workspace and follow
+         unless (null hs') (windows . W.greedyView . W.tag $ head hs'))
+   , ((myModMask,               xK_w), moveTo Next EmptyWS)         -- find next empty workspace
+   , ((myModMask,               xK_e), moveTo Prev EmptyWS)         -- find prev empty workspace
+   , ((myModMask,               xK_s), moveTo Next NonEmptyWS)      -- find next busy workspace
+   , ((myModMask,               xK_a), moveTo Prev NonEmptyWS)      -- find prev busy workspace
+   , ((myModMask .|. shiftMask, xK_s), shiftToNext >> nextWS)       -- shift to next workspace and follow
+   , ((myModMask .|. shiftMask, xK_a), shiftToPrev >> prevWS)       -- shift to prev workspace and follow 
+   , ((myModMask .|. shiftMask, xK_w),                              -- shift to next empty workspace and follow
+      doTo Next EmptyWS getSortByIndex shiftAndFollow)
+   , ((myModMask .|. shiftMask, xK_grave), do                       -- shift to last busy workspace and follow
+         -- hs' <- gets (W.hidden . windowset)
+         hs' <- gets $ (flip skipTags) mySpecialWS . skipEmpty . W.hidden . windowset
+         unless (null hs') (shiftAndFollow . W.tag $ head hs'))
+     
+     -- , ((myModMask .|. shiftMask, xK_w),                           -- shift to next empty workspace and follow
+     --    doTo Next EmptyWS getSortByIndex
+     --    $ liftM2 (>>) (windows . W.shift) (windows . W.greedyView))
+
+     -- , ((myModMask .|. shiftMask, xK_a),
+     --    doTo Prev EmptyWS getSortByIndex
+     --    $ liftM2 (>>) (windows . W.shift) (windows . W.greedyView))  -- shift to next empty workspace and follow
           
      -- Jump to layouts 
    , ((myModMask,               xK_F1), sendMessage $ JumpToLayout "emacsDev")
@@ -129,7 +170,12 @@ myKeys = myKeyBindings ++
   , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]
   ]
 
+---------------------------------------------------------------------------
 -- Tweak Shell Prompt to search for infixes.
+--
+-- Taken from patch discussion for XMonad issue 393:
+-- "XMonad.Prompt.Shell should use user-defined searchPredicate"
+-- (https://code.google.com/p/xmonad/issues/detail?id=393)
 myShellPrompt :: XPConfig -> X ()
 myShellPrompt c = do
     cmds <- io $ getCommands
@@ -157,13 +203,18 @@ commandCompletionFunction :: [String] -> String -> [String]
 commandCompletionFunction cmds str | '/' `elem` str = []
                                    | otherwise = filter ((\x y -> map toLower x `isInfixOf` map toLower y) str) cmds
 
--- xmobar configuration
+---------------------------------------------------------------------------
+-- Basic xmobar configuration
+---------------------------------------------------------------------------
 myTitleColor  = "#eeeeee"
 myTitleLength = 120
 myCurrentWSColor = "#e6744c"
 myVisibleWSColor = "#c185a7"
 myUrgentWSColor  = "#cc0000"
 
+---------------------------------------------------------------------------
+-- Main
+---------------------------------------------------------------------------
 main = do
 xmproc <- spawnPipe "xmobar ~/.xmonad/xmobarrc"
 xmonad $ gnomeConfig {
