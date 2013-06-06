@@ -67,9 +67,6 @@ myFocusedBorderColor = "#00adeb"
 myWorkspaces = map show [1..12]
 mySpecialWS  = ["1", "12"]
 
--- Focus does not follow mouse
-myFocusFollowsMouse = False
-
 ---------------------------------------------------------------------------
 -- Management Hook
 ---------------------------------------------------------------------------
@@ -150,10 +147,12 @@ myKeyBindings =
   , ((myModMask,               xK_q), moveTo Next EmptyWS)    -- find next empty workspace
   , ((myModMask,               xK_s), moveTo Next (WSIs $ busyNotSpecial' mySpecialWS)) -- find next busy not-special workspace
   , ((myModMask,               xK_a), moveTo Prev (WSIs $ busyNotSpecial' mySpecialWS)) -- find prev busy not-special workspace
-  , ((myModMask,               xK_f), moveTo Next NonEmptyWS) -- find next busy not-special workspace
-  , ((myModMask,               xK_d), moveTo Prev NonEmptyWS) -- find prev busy not-special workspace
+  , ((myModMask,               xK_x), moveTo Next NonEmptyWS) -- find next busy workspace
+  , ((myModMask,               xK_z), moveTo Prev NonEmptyWS) -- find prev busy workspace
   , ((myModMask .|. shiftMask, xK_s), shiftToNext >> nextWS)  -- shift to next workspace and follow
   , ((myModMask .|. shiftMask, xK_a), shiftToPrev >> prevWS)  -- shift to prev workspace and follow 
+  , ((myModMask .|. shiftMask, xK_x), shiftTo Next EmptyWS)   -- shift to next empty workspace
+  , ((myModMask .|. shiftMask, xK_z), shiftTo Prev EmptyWS)   -- shift to next empty workspace
   , ((myModMask .|. shiftMask, xK_q),                         -- shift to next empty workspace and follow
      doTo Next EmptyWS getSortByIndex shiftAndFollow)
   , ((myModMask .|. shiftMask, xK_grave), do                  -- shift to last busy workspace and follow
@@ -320,7 +319,6 @@ xmonad $ gnomeConfig {
     modMask            = myModMask
   , focusedBorderColor = myFocusedBorderColor
   , workspaces         = myWorkspaces
-  , focusFollowsMouse  = myFocusFollowsMouse
     -- Need to run Gnome startup hook to register Xmonad properly.
   , startupHook = do
       startupHook gnomeConfig
