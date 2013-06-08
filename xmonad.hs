@@ -147,12 +147,12 @@ myKeyBindings =
   , ((myModMask,               xK_q), moveTo Next EmptyWS)    -- find next empty workspace
   , ((myModMask,               xK_s), moveTo Next (WSIs $ busyNotSpecial' mySpecialWS)) -- find next busy not-special workspace
   , ((myModMask,               xK_a), moveTo Prev (WSIs $ busyNotSpecial' mySpecialWS)) -- find prev busy not-special workspace
-  , ((myModMask,               xK_x), moveTo Next NonEmptyWS) -- find next busy workspace
-  , ((myModMask,               xK_z), moveTo Prev NonEmptyWS) -- find prev busy workspace
+  , ((myModMask,               xK_bracketright), moveTo Next NonEmptyWS) -- find next busy workspace
+  , ((myModMask,               xK_bracketleft), moveTo Prev NonEmptyWS) -- find prev busy workspace
   , ((myModMask .|. shiftMask, xK_s), shiftToNext >> nextWS)  -- shift to next workspace and follow
   , ((myModMask .|. shiftMask, xK_a), shiftToPrev >> prevWS)  -- shift to prev workspace and follow 
-  , ((myModMask .|. shiftMask, xK_x), shiftTo Next EmptyWS)   -- shift to next empty workspace
-  , ((myModMask .|. shiftMask, xK_z), shiftTo Prev EmptyWS)   -- shift to next empty workspace
+  , ((myModMask .|. shiftMask, xK_bracketright), shiftTo Next EmptyWS)   -- shift to next empty workspace
+  , ((myModMask .|. shiftMask, xK_bracketleft), shiftTo Prev EmptyWS)   -- shift to next empty workspace
   , ((myModMask .|. shiftMask, xK_q),                         -- shift to next empty workspace and follow
      doTo Next EmptyWS getSortByIndex shiftAndFollow)
   , ((myModMask .|. shiftMask, xK_grave), do                  -- shift to last busy workspace and follow
@@ -237,12 +237,14 @@ myHelp = unlines ["The modifier key is 'Super'.  Keybindings:",
     "mod-Shift-{[1..9],0,-,=}        Move client to Workspace [1..12]",
     "mod-Right                       Switch to next Workspace",
     "mod-Left                        Switch to previous Workspace",
-    "mod-f                           Switch to next nonempty Workspace",
-    "mod-d                           Switch to previous nonempty Workspace",
+    "mod-bracketright                Switch to next nonempty Workspace",
+    "mod-bracketleft                 Switch to previous nonempty Workspace",
     "mod-s                           Switch to next nonspecial nonempty Workspace",
     "mod-a                           Switch to previous nonspecial nonempty Workspace",
-    "mod-Shift-s                     Move client to next Workspace",
-    "mod-Shift-a                     Move client to previous Workspace",
+    "mod-Shift-s                     Move client and switch to next Workspace",
+    "mod-Shift-a                     Move client and switch to previous Workspace",
+    "mod-Shift-bracketright          Move client to next nonempty Workspace",
+    "mod-Shift-bracketleft           Move client to previous nonempty Workspace",
     "mod-q                           Switch to next empty Workspace",
     "mod-Shift-q                     Move client and switch to next empty Workspace",
     "mod-grave       (mod-`)         Switch to last viewed nonspecial nonempty Workspace",
