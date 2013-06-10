@@ -85,16 +85,27 @@ myManageHook = composeAll (
 ---------------------------------------------------------------------------
 goldenRatio = toRational (2/(1 + sqrt 5 :: Double)) -- golden, thx Octoploid
 
-myLayouts = renamed [Replace "emacsDev"] emacsDev |||
-            spiral goldenRatio                    |||
-            defaultTall                           |||
-            simpleTabbed
-  where
-    emacsDev    = Mirror $ ResizableTall 2 delta 0.85 []      -- My preferred layout for working in Emacs.
-    tiled       = ResizableTall nmaster delta goldenRatio []
-    defaultTall = Mirror $ ResizableTall nmaster delta (1/2) []
-    nmaster     = 1
-    delta       = 0.03
+-- My preferred layout for working in Emacs.
+emacsDevLayout     = renamed [Replace "emacsDev"] $ Mirror $ ResizableTall 2 (3/100) 0.85 []
+spiralLayout       = spiral goldenRatio
+defaultTallLayout  = Mirror $ ResizableTall 1 (3/100) (1/2) []
+simpleTabbedLayout = simpleTabbed
+
+myLayouts   = emacsDevLayout ||| spiralLayout ||| defaultTallLayout ||| simpleTabbedLayout
+-- Custom rotations of myLayouts for special workspaces
+ws1Layouts  = spiralLayout ||| defaultTallLayout ||| simpleTabbedLayout ||| emacsDevLayout
+ws12Layouts = defaultTallLayout ||| simpleTabbedLayout ||| emacsDevLayout ||| spiralLayout
+
+-- myLayouts = renamed [Replace "emacsDev"] emacsDev |||
+--             spiral goldenRatio                    |||
+--             defaultTall                           |||
+--             simpleTabbed
+--   where
+--     emacsDev    = Mirror $ ResizableTall 2 delta 0.85 []      -- My preferred layout for working in Emacs.
+--     tiled       = ResizableTall nmaster delta goldenRatio []
+--     defaultTall = Mirror $ ResizableTall nmaster delta (1/2) []
+--     nmaster     = 1
+--     delta       = 0.03
 
 
 ---------------------------------------------------------------------------
@@ -140,6 +151,7 @@ myKeyBindings =
   , ((myModMask,               xK_Up),    prevScreen)
   , ((myModMask .|. shiftMask, xK_Down),  shiftNextScreen)
   , ((myModMask .|. shiftMask, xK_Up),    shiftPrevScreen)
+    
     --, ((myModMask,               xK_grave), toggleWS' mySpecialWS) -- toggle not-special workspaces
   , ((myModMask,               xK_grave), do                  -- toggle busy not-special workspaces
         hs' <- gets $ (flip skipTags) mySpecialWS . skipEmpty . W.hidden . windowset
@@ -326,9 +338,10 @@ xmonad $ gnomeConfig {
       startupHook gnomeConfig
       spawn "~/.xmonad/startup-hook"
   , manageHook = manageDocks <+> myManageHook
-  , layoutHook = onWorkspace "1" (avoidStruts $ smartBorders (spiral goldenRatio)) $
-                 onWorkspace "12" (avoidStruts $ smartBorders (ResizableTall 1 (3/100) (1/2) [])) $
-                 avoidStruts $ smartBorders $ desktopLayoutModifiers (myLayouts)
+  , layoutHook = avoidStruts $ smartBorders $ 
+                 onWorkspace "1" ws1Layouts $
+                 onWorkspace "12" ws12Layouts $
+                 desktopLayoutModifiers (myLayouts)
   , logHook = dynamicLogWithPP $ xmobarPP
               { ppOutput = hPutStrLn xmproc 
               , ppTitle = xmobarColor myTitleColor "" . shorten myTitleLength
