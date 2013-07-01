@@ -51,7 +51,7 @@ import qualified XMonad.StackSet as W
 import qualified Data.Map as M
 
 import Control.Monad ( liftM2, unless )
-import Data.Maybe    ( isJust )
+import Data.Maybe    ( isNothing, isJust )
 
 
 ---------------------------------------------------------------------------
@@ -93,19 +93,8 @@ simpleTabbedLayout = simpleTabbed
 
 myLayouts   = emacsDevLayout ||| spiralLayout ||| defaultTallLayout ||| simpleTabbedLayout
 -- Custom rotations of myLayouts for special workspaces
-ws1Layouts  = spiralLayout ||| defaultTallLayout ||| simpleTabbedLayout ||| emacsDevLayout
+ws01Layouts  = spiralLayout ||| defaultTallLayout ||| simpleTabbedLayout ||| emacsDevLayout
 ws12Layouts = defaultTallLayout ||| simpleTabbedLayout ||| emacsDevLayout ||| spiralLayout
-
--- myLayouts = renamed [Replace "emacsDev"] emacsDev |||
---             spiral goldenRatio                    |||
---             defaultTall                           |||
---             simpleTabbed
---   where
---     emacsDev    = Mirror $ ResizableTall 2 delta 0.85 []      -- My preferred layout for working in Emacs.
---     tiled       = ResizableTall nmaster delta goldenRatio []
---     defaultTall = Mirror $ ResizableTall nmaster delta (1/2) []
---     nmaster     = 1
---     delta       = 0.03
 
 
 ---------------------------------------------------------------------------
@@ -130,6 +119,12 @@ busyHiddenNotSpecial' ids = do ne <- return (isJust . W.stack)                  
                                ns <- return ((`notElem` ids) . W.tag)                  -- not special
                                return (\ws -> ne ws && hi ws && ns ws)
 
+hiddenEmptyWS :: X (WindowSpace -> Bool)
+hiddenEmptyWS = do em <- return (isNothing . W.stack)                      -- empty
+                   hi <- do hs <- gets (map W.tag . W.hidden . windowset)  -- hidden
+                            return (\ws -> W.tag ws `elem` hs)
+                   return (\ws -> em ws && hi ws)
+
 -- Additional key bindings
 myKeyBindings =
   [
@@ -140,43 +135,68 @@ myKeyBindings =
   , ((myModMask,               xK_Escape), spawn "if type xmonad; then xmonad --recompile && xmonad --restart; else xmessage xmonad not in \\$PATH: \"$PATH\"; fi") -- %! Restart xmonad
   , ((myModMask .|. shiftMask, xK_Escape), spawn "gnome-session-quit")
     
+    ---------------------------------------------------------------------------
     -- changing sizes
+    ---------------------------------------------------------------------------
   , ((myModMask .|. shiftMask, xK_h), sendMessage MirrorShrink)
   , ((myModMask .|. shiftMask, xK_l), sendMessage MirrorExpand)
     
+    ---------------------------------------------------------------------------
     -- cycling through windows
-  , ((myModMask,               xK_j), windows W.focusUp)   -- %! Move focus to the next window
-  , ((myModMask,               xK_k), windows W.focusDown) -- %! Move focus to the previous window
-  , ((myModMask .|. shiftMask, xK_j), windows W.swapUp)    -- %! Swap the focused window with the next window
-  , ((myModMask .|. shiftMask, xK_k), windows W.swapDown)  -- %! Swap the focused window with the previous window
+    ---------------------------------------------------------------------------
+  , ((myModMask .|. shiftMask, xK_Tab), windows W.swapDown) -- %! Swap the focused window with the next window
+  , ((myModMask,               xK_j), windows W.focusUp)    -- %! Move focus to the next window
+  , ((myModMask,               xK_k), windows W.focusDown)  -- %! Move focus to the previous window
+  , ((myModMask .|. shiftMask, xK_j), windows W.swapUp)     -- %! Swap the focused window with the next window
+  , ((myModMask .|. shiftMask, xK_k), windows W.swapDown)   -- %! Swap the focused window with the previous window
   
+    ---------------------------------------------------------------------------
     -- cycling through screens
+    ---------------------------------------------------------------------------
   , ((myModMask,               xK_Down),  nextScreen)
   , ((myModMask,               xK_Up),    prevScreen)
-  , ((myModMask .|. shiftMask, xK_Down),  shiftNextScreen)
-  , ((myModMask .|. shiftMask, xK_Up),    shiftPrevScreen)
+  -- , ((myModMask .|. shiftMask, xK_Down),  shiftNextScreen)
+  -- , ((myModMask .|. shiftMask, xK_Up),    shiftPrevScreen)
+  , ((myModMask .|. shiftMask, xK_Down),  swapNextScreen)
+  , ((myModMask .|. shiftMask, xK_Up),    swapPrevScreen)
   , ((myModMask,               xK_backslash), nextScreen)
   , ((myModMask .|. shiftMask, xK_backslash), swapNextScreen)
     
+    ---------------------------------------------------------------------------
     -- cycling through workspaces
+    ---------------------------------------------------------------------------
   , ((myModMask,               xK_Right), nextWS)
   , ((myModMask,               xK_Left),  prevWS)
     --, ((myModMask,               xK_grave), toggleWS' mySpecialWS) -- toggle not-special workspaces
-  , ((myModMask,               xK_grave), do                  -- toggle busy not-special workspaces
+    -- toggle busy not-special workspaces
+  , ((myModMask,               xK_grave), do
         hs' <- gets $ (flip skipTags) mySpecialWS . skipEmpty . W.hidden . windowset
         unless (null hs') (windows . W.greedyView . W.tag $ head hs'))
-  , ((myModMask,               xK_q), moveTo Next EmptyWS)    -- find next empty workspace
-  , ((myModMask,               xK_s), moveTo Next (WSIs $ busyHiddenNotSpecial' mySpecialWS)) -- find next busy not-special workspace
-  , ((myModMask,               xK_a), moveTo Prev (WSIs $ busyHiddenNotSpecial' mySpecialWS)) -- find prev busy not-special workspace
-  -- , ((myModMask,               xK_bracketright), moveTo Next NonEmptyWS) -- find next busy workspace
-  -- , ((myModMask,               xK_bracketleft), moveTo Prev NonEmptyWS) -- find prev busy workspace
-  , ((myModMask .|. shiftMask, xK_s), shiftToNext >> nextWS)  -- shift to next workspace and follow
-  , ((myModMask .|. shiftMask, xK_a), shiftToPrev >> prevWS)  -- shift to prev workspace and follow 
-  , ((myModMask .|. shiftMask, xK_bracketright), shiftTo Next EmptyWS)   -- shift to next empty workspace
-  , ((myModMask .|. shiftMask, xK_bracketleft), shiftTo Prev EmptyWS)   -- shift to next empty workspace
-  , ((myModMask .|. shiftMask, xK_q),                         -- shift to next empty workspace and follow
-     doTo Next EmptyWS getSortByIndex shiftAndFollow)
-  , ((myModMask .|. shiftMask, xK_grave), do                  -- shift to last busy workspace and follow
+  --, ((myModMask,               xK_q), moveTo Next EmptyWS)    -- find next empty workspace
+    
+    -- find next empty workspace
+  , ((myModMask,               xK_q), moveTo Next (WSIs hiddenEmptyWS))
+    -- find next busy not-special workspace
+  , ((myModMask,               xK_s), moveTo Next (WSIs $ busyHiddenNotSpecial' mySpecialWS))
+    -- find prev busy not-special workspace
+  , ((myModMask,               xK_a), moveTo Prev (WSIs $ busyHiddenNotSpecial' mySpecialWS))
+    -- find next busy workspace
+  , ((myModMask,               xK_f), moveTo Next HiddenNonEmptyWS)
+    -- find prev busy workspace
+  , ((myModMask,               xK_d), moveTo Prev HiddenNonEmptyWS)
+    -- shift to next workspace and follow
+  , ((myModMask .|. shiftMask, xK_s), doTo Next HiddenWS getSortByIndex shiftAndFollow)
+    -- shift to prev workspace and follow 
+  , ((myModMask .|. shiftMask, xK_a), doTo Prev HiddenWS getSortByIndex shiftAndFollow)
+    -- shift to next hidden empty workspace
+  , ((myModMask .|. shiftMask, xK_f), shiftTo Next HiddenWS)
+    -- shift to next hidden empty workspace
+  , ((myModMask .|. shiftMask, xK_d), shiftTo Prev HiddenWS)
+    -- shift to next empty workspace and follow
+  , ((myModMask .|. shiftMask, xK_q),
+     doTo Next (WSIs hiddenEmptyWS) getSortByIndex shiftAndFollow)
+    -- shift to last busy workspace and follow
+  , ((myModMask .|. shiftMask, xK_grave), do
         -- hs' <- gets (W.hidden . windowset)
         hs' <- gets $ (flip skipTags) mySpecialWS . skipEmpty . W.hidden . windowset
         unless (null hs') (shiftAndFollow . W.tag $ head hs'))
@@ -189,13 +209,17 @@ myKeyBindings =
     --    doTo Prev EmptyWS getSortByIndex
     --    $ liftM2 (>>) (windows . W.shift) (windows . W.greedyView))  -- shift to next empty workspace and follow
     
+    ---------------------------------------------------------------------------
     -- changing layouts 
+    ---------------------------------------------------------------------------
   , ((myModMask,               xK_F1), sendMessage $ JumpToLayout "emacsDev")
   , ((myModMask,               xK_F2), sendMessage $ JumpToLayout "Spiral")
   , ((myModMask,               xK_F3), sendMessage $ JumpToLayout "Tabbed Simplest")
   , ((myModMask,               xK_F4), sendMessage $ JumpToLayout "Mirror ResizableTall")
     
+    ---------------------------------------------------------------------------
     -- show help with keybindings
+    ---------------------------------------------------------------------------
   , ((myModMask .|. shiftMask, xK_slash), spawn ("echo \"" ++ myHelp ++ "\" | xmessage -file -"))
   ]
 
@@ -208,7 +232,7 @@ myKeys = myKeyBindings ++
   [
     ((m .|. myModMask, k), sc >>= screenWorkspace >>= flip whenJust (windows . f))
   | (k, sc) <- zip [xK_bracketleft, xK_bracketright] [(screenBy (-1)),(screenBy 1)]
-  , (f, m) <- [(W.view, 0), (W.shift, shiftMask)]
+  , (f, m) <- [(W.view, 0), (W.greedyView, shiftMask)]
   ]
 
 myHelp :: String
@@ -231,15 +255,15 @@ myHelp = unlines ["The modifier key is 'Super'.  Keybindings:",
     "",
     "-- move focus up or down the window stack",
     "mod-Tab        Move focus to the next window",
-    "mod-Shift-Tab  Move focus to the previous window",
     "mod-j          Move focus to the next window",
     "mod-k          Move focus to the previous window",
     "mod-m          Move focus to the master window",
     "",
     "-- modifying the window order",
-    "mod-Return   Swap the focused window and the master window",
-    "mod-Shift-j  Swap the focused window with the next window",
-    "mod-Shift-k  Swap the focused window with the previous window",
+    "mod-Return     Swap the focused window and the master window",
+    "mod-Shift-Tab  Swap the focused window with the next window",
+    "mod-Shift-j    Swap the focused window with the next window",
+    "mod-Shift-k    Swap the focused window with the previous window",
     "",
     "-- resizing the master/slave ratio",
     "mod-h        Shrink the master area",
@@ -263,26 +287,26 @@ myHelp = unlines ["The modifier key is 'Super'.  Keybindings:",
     "mod-Shift-{[1..9],0,-,=}        Move client to Workspace [1..12]",
     "mod-Right                       Switch to next Workspace",
     "mod-Left                        Switch to previous Workspace",
-    "mod-bracketright                Switch to next nonempty Workspace",
-    "mod-bracketleft                 Switch to previous nonempty Workspace",
-    "mod-s                           Switch to next nonspecial nonempty Workspace",
+    "mod-f                           Switch to next nonempty hidden Workspace",
+    "mod-d                           Switch to previous nonempty hidden Workspace",
+    "mod-s                           Switch to next nonspecial nonempty hidden Workspace",
     "mod-a                           Switch to previous nonspecial nonempty Workspace",
-    "mod-Shift-s                     Move client and switch to next Workspace",
-    "mod-Shift-a                     Move client and switch to previous Workspace",
-    "mod-Shift-bracketright          Move client to next nonempty Workspace",
-    "mod-Shift-bracketleft           Move client to previous nonempty Workspace",
-    "mod-q                           Switch to next empty Workspace",
-    "mod-Shift-q                     Move client and switch to next empty Workspace",
-    "mod-grave       (mod-`)         Switch to last viewed nonspecial nonempty Workspace",
-    "mod-Shift-grave (mod-Shift-`)   Move client and switch to last viewed nonspecial nonempty Workspace",
+    "mod-Shift-s                     Move client and switch to next hidden Workspace",
+    "mod-Shift-a                     Move client and switch to previous hidden Workspace",
+    "mod-Shift-f                     Move client to next hidden Workspace",
+    "mod-Shift-d                     Move client to previous hidden Workspace",
+    "mod-q                           Switch to next empty hidden Workspace",
+    "mod-Shift-q                     Move client and switch to next empty hidden Workspace",
+    "mod-grave       (mod-`)         Switch to last viewed nonspecial nonempty hidden Workspace",
+    "mod-Shift-grave (mod-Shift-`)   Move client and switch to last viewed nonspecial nonempty hidden Workspace",
     "",
     "-- Screens",
     "mod-{w,e,r}          Switch to physical/Xinerama screens 1, 2, or 3",
     "mod-Shift-{w,e,r}    Move client to screen 1, 2, or 3",
     "mod-Down             Switch to next screen",
     "mod-Up               Switch to previous screen",
-    "mod-Shift-Down       Move client to next screen",
-    "mod-Shift-Up         Move client to previous screen",
+    "mod-Shift-Down       Swap workspace with next screen",
+    "mod-Shift-Up         Swap workspace with previous screen",
     "mod-backslash        Switch to next screen",
     "mod-Shift-backslash  Swap workspace with next screen",
     "",
@@ -338,7 +362,7 @@ myTitleColor  = "#eeeeee"
 myTitleLength = 120
 myCurrentWSColor = "#e6744c"
 -- myVisibleWSColor = "#c185a7"
-myVisibleWSColor = "#3eb677"
+myVisibleWSColor = "#3eb0b0"
 myUrgentWSColor  = "#cc0000"
 
 
@@ -357,7 +381,7 @@ xmonad $ gnomeConfig {
       spawn "~/.xmonad/startup-hook"
   , manageHook = manageDocks <+> myManageHook
   , layoutHook = avoidStruts $ smartBorders $ 
-                 onWorkspace "1" ws1Layouts $
+                 onWorkspace "1" ws01Layouts $
                  onWorkspace "12" ws12Layouts $
                  desktopLayoutModifiers (myLayouts)
   , logHook = dynamicLogWithPP $ xmobarPP
