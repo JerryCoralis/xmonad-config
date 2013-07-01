@@ -121,8 +121,14 @@ skipEmpty wss = filter (isJust . W.stack) wss
 shiftAndFollow :: WorkspaceId -> X()
 shiftAndFollow = liftM2 (>>) (windows . W.shift) (windows . W.greedyView)
 
-busyNotSpecial' :: [WorkspaceId] -> X (WindowSpace -> Bool)
-busyNotSpecial' ids = return (\ws -> (isJust . W.stack) ws && ((`notElem` ids) . W.tag) ws)
+busyHiddenNotSpecial' :: [WorkspaceId] -> X (WindowSpace -> Bool)
+-- busyHiddenNotSpecial' ids = return (\ws -> (isJust . W.stack) ws
+--                                            && ((`notElem` ids) . W.tag) ws)
+busyHiddenNotSpecial' ids = do ne <- return (isJust . W.stack)                         -- busy
+                               hi <- do hs <- gets (map W.tag . W.hidden . windowset)  -- hidden
+                                        return (\ws -> W.tag ws `elem` hs)
+                               ns <- return ((`notElem` ids) . W.tag)                  -- not special
+                               return (\ws -> ne ws && hi ws && ns ws)
 
 -- Additional key bindings
 myKeyBindings =
@@ -143,24 +149,27 @@ myKeyBindings =
   , ((myModMask,               xK_k), windows W.focusDown) -- %! Move focus to the previous window
   , ((myModMask .|. shiftMask, xK_j), windows W.swapUp)    -- %! Swap the focused window with the next window
   , ((myModMask .|. shiftMask, xK_k), windows W.swapDown)  -- %! Swap the focused window with the previous window
-    
-    -- cycling through workspaces
-  , ((myModMask,               xK_Right), nextWS)
-  , ((myModMask,               xK_Left),  prevWS)
+  
+    -- cycling through screens
   , ((myModMask,               xK_Down),  nextScreen)
   , ((myModMask,               xK_Up),    prevScreen)
   , ((myModMask .|. shiftMask, xK_Down),  shiftNextScreen)
   , ((myModMask .|. shiftMask, xK_Up),    shiftPrevScreen)
+  , ((myModMask,               xK_backslash), nextScreen)
+  , ((myModMask .|. shiftMask, xK_backslash), swapNextScreen)
     
+    -- cycling through workspaces
+  , ((myModMask,               xK_Right), nextWS)
+  , ((myModMask,               xK_Left),  prevWS)
     --, ((myModMask,               xK_grave), toggleWS' mySpecialWS) -- toggle not-special workspaces
   , ((myModMask,               xK_grave), do                  -- toggle busy not-special workspaces
         hs' <- gets $ (flip skipTags) mySpecialWS . skipEmpty . W.hidden . windowset
         unless (null hs') (windows . W.greedyView . W.tag $ head hs'))
   , ((myModMask,               xK_q), moveTo Next EmptyWS)    -- find next empty workspace
-  , ((myModMask,               xK_s), moveTo Next (WSIs $ busyNotSpecial' mySpecialWS)) -- find next busy not-special workspace
-  , ((myModMask,               xK_a), moveTo Prev (WSIs $ busyNotSpecial' mySpecialWS)) -- find prev busy not-special workspace
-  , ((myModMask,               xK_bracketright), moveTo Next NonEmptyWS) -- find next busy workspace
-  , ((myModMask,               xK_bracketleft), moveTo Prev NonEmptyWS) -- find prev busy workspace
+  , ((myModMask,               xK_s), moveTo Next (WSIs $ busyHiddenNotSpecial' mySpecialWS)) -- find next busy not-special workspace
+  , ((myModMask,               xK_a), moveTo Prev (WSIs $ busyHiddenNotSpecial' mySpecialWS)) -- find prev busy not-special workspace
+  -- , ((myModMask,               xK_bracketright), moveTo Next NonEmptyWS) -- find next busy workspace
+  -- , ((myModMask,               xK_bracketleft), moveTo Prev NonEmptyWS) -- find prev busy workspace
   , ((myModMask .|. shiftMask, xK_s), shiftToNext >> nextWS)  -- shift to next workspace and follow
   , ((myModMask .|. shiftMask, xK_a), shiftToPrev >> prevWS)  -- shift to prev workspace and follow 
   , ((myModMask .|. shiftMask, xK_bracketright), shiftTo Next EmptyWS)   -- shift to next empty workspace
@@ -195,6 +204,11 @@ myKeys = myKeyBindings ++
     ((m .|. myModMask, k), windows $ f i)
   | (i, k) <- zip myWorkspaces $ [xK_1 .. xK_9] ++ [xK_0, xK_minus, xK_equal]
   , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]
+  ] ++
+  [
+    ((m .|. myModMask, k), sc >>= screenWorkspace >>= flip whenJust (windows . f))
+  | (k, sc) <- zip [xK_bracketleft, xK_bracketright] [(screenBy (-1)),(screenBy 1)]
+  , (f, m) <- [(W.view, 0), (W.shift, shiftMask)]
   ]
 
 myHelp :: String
@@ -244,7 +258,7 @@ myHelp = unlines ["The modifier key is 'Super'.  Keybindings:",
     "mod-Shift-Escape  Quit xmonad",
     "mod-Escape        Restart xmonad",
     "",
-    "-- Workspaces & screens (Workspaces 1 and 12 are special)",
+    "-- Workspaces (Workspaces 1 and 12 are special)",
     "mod-{[1..9],0,-,=}              Switch to Workspace [1..12]",
     "mod-Shift-{[1..9],0,-,=}        Move client to Workspace [1..12]",
     "mod-Right                       Switch to next Workspace",
@@ -262,12 +276,15 @@ myHelp = unlines ["The modifier key is 'Super'.  Keybindings:",
     "mod-grave       (mod-`)         Switch to last viewed nonspecial nonempty Workspace",
     "mod-Shift-grave (mod-Shift-`)   Move client and switch to last viewed nonspecial nonempty Workspace",
     "",
-    "mod-{w,e,r}        Switch to physical/Xinerama screens 1, 2, or 3",
-    "mod-Shift-{w,e,r}  Move client to screen 1, 2, or 3",
-    "mod-Down           Switch to next screen",
-    "mod-Up             Switch to previous screen",
-    "mod-Shift-Down     Move client to next screen",
-    "mod-Shift-Up       Move client to previous screen",
+    "-- Screens",
+    "mod-{w,e,r}          Switch to physical/Xinerama screens 1, 2, or 3",
+    "mod-Shift-{w,e,r}    Move client to screen 1, 2, or 3",
+    "mod-Down             Switch to next screen",
+    "mod-Up               Switch to previous screen",
+    "mod-Shift-Down       Move client to next screen",
+    "mod-Shift-Up         Move client to previous screen",
+    "mod-backslash        Switch to next screen",
+    "mod-Shift-backslash  Swap workspace with next screen",
     "",
     "-- Mouse bindings: default actions bound to mouse events",
     "mod-button1  Set the window to floating mode and move by dragging",
@@ -320,7 +337,8 @@ commandCompletionFunction cmds str | '/' `elem` str = []
 myTitleColor  = "#eeeeee"
 myTitleLength = 120
 myCurrentWSColor = "#e6744c"
-myVisibleWSColor = "#c185a7"
+-- myVisibleWSColor = "#c185a7"
+myVisibleWSColor = "#3eb677"
 myUrgentWSColor  = "#cc0000"
 
 
