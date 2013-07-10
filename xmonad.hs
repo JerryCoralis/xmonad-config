@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------
 -- TB Schardl (neboat)
--- 06/2013
+-- 07/2013
 --
 -- XMonad configuration.
 --
@@ -125,7 +125,6 @@ hiddenEmptyWS = do em <- return (isNothing . W.stack)                      -- em
                             return (\ws -> W.tag ws `elem` hs)
                    return (\ws -> em ws && hi ws)
 
--- Additional key bindings
 myKeyBindings =
   [
     --  ((myModMask, xK_p), spawn "exe=`dmenu_path | dmenu -i` && eval \"exec $exe\"")
@@ -137,13 +136,11 @@ myKeyBindings =
     
     ---------------------------------------------------------------------------
     -- changing sizes
-    ---------------------------------------------------------------------------
   , ((myModMask .|. shiftMask, xK_h), sendMessage MirrorShrink)
   , ((myModMask .|. shiftMask, xK_l), sendMessage MirrorExpand)
     
     ---------------------------------------------------------------------------
     -- cycling through windows
-    ---------------------------------------------------------------------------
   , ((myModMask .|. shiftMask, xK_Tab), windows W.swapDown) -- %! Swap the focused window with the next window
   , ((myModMask,               xK_j), windows W.focusUp)    -- %! Move focus to the next window
   , ((myModMask,               xK_k), windows W.focusDown)  -- %! Move focus to the previous window
@@ -152,7 +149,6 @@ myKeyBindings =
   
     ---------------------------------------------------------------------------
     -- cycling through screens
-    ---------------------------------------------------------------------------
   , ((myModMask,               xK_Down),  nextScreen)
   , ((myModMask,               xK_Up),    prevScreen)
   -- , ((myModMask .|. shiftMask, xK_Down),  shiftNextScreen)
@@ -160,11 +156,12 @@ myKeyBindings =
   , ((myModMask .|. shiftMask, xK_Down),  swapNextScreen)
   , ((myModMask .|. shiftMask, xK_Up),    swapPrevScreen)
   , ((myModMask,               xK_backslash), nextScreen)
+    -- swap this workspace with the workspace on the next screen,
+    -- then follow.
   , ((myModMask .|. shiftMask, xK_backslash), swapNextScreen)
     
     ---------------------------------------------------------------------------
     -- cycling through workspaces
-    ---------------------------------------------------------------------------
   , ((myModMask,               xK_Right), nextWS)
   , ((myModMask,               xK_Left),  prevWS)
     --, ((myModMask,               xK_grave), toggleWS' mySpecialWS) -- toggle not-special workspaces
@@ -211,7 +208,6 @@ myKeyBindings =
     
     ---------------------------------------------------------------------------
     -- changing layouts 
-    ---------------------------------------------------------------------------
   , ((myModMask,               xK_F1), sendMessage $ JumpToLayout "emacsDev")
   , ((myModMask,               xK_F2), sendMessage $ JumpToLayout "Spiral")
   , ((myModMask,               xK_F3), sendMessage $ JumpToLayout "Tabbed Simplest")
@@ -219,7 +215,6 @@ myKeyBindings =
     
     ---------------------------------------------------------------------------
     -- show help with keybindings
-    ---------------------------------------------------------------------------
   , ((myModMask .|. shiftMask, xK_slash), spawn ("echo \"" ++ myHelp ++ "\" | xmessage -file -"))
   ]
 
