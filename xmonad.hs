@@ -1,6 +1,6 @@
 ---------------------------------------------------------------------------
 -- TB Schardl (neboat)
--- 07/2013
+-- 09/2013
 --
 -- XMonad configuration.
 --
@@ -64,7 +64,7 @@ myModMask = mod4Mask
 myFocusedBorderColor = "#00adeb"
 
 -- Set up 12 workspaces, where workspaces 1 and 12 are "special"
-myWorkspaces = map show [1..12]
+myWorkspaces = map show [1..22]
 mySpecialWS  = ["1", "12"]
 
 ---------------------------------------------------------------------------
@@ -86,7 +86,7 @@ myManageHook = composeAll (
 goldenRatio = toRational (2/(1 + sqrt 5 :: Double)) -- golden, thx Octoploid
 
 -- My preferred layout for working in Emacs.
-emacsDevLayout     = renamed [Replace "emacsDev"] $ Mirror $ ResizableTall 2 (3/100) 0.85 []
+emacsDevLayout     = renamed [Replace "emacsDev"] $ Mirror $ ResizableTall 3 (3/100) 0.85 []
 spiralLayout       = spiral goldenRatio
 defaultTallLayout  = Mirror $ ResizableTall 1 (3/100) (1/2) []
 simpleTabbedLayout = simpleTabbed
@@ -130,10 +130,11 @@ myKeyBindings =
     --  ((myModMask, xK_p), spawn "exe=`dmenu_path | dmenu -i` && eval \"exec $exe\"")
     ((myModMask, xK_p), myShellPrompt defaultXPConfig { position=Top })
     
-    --, ((myModMask .|. shiftMask, xK_Escape), io (exitWith ExitSuccess))
   , ((myModMask,               xK_Escape), spawn "if type xmonad; then xmonad --recompile && xmonad --restart; else xmessage xmonad not in \\$PATH: \"$PATH\"; fi") -- %! Restart xmonad
   , ((myModMask .|. shiftMask, xK_Escape), spawn "gnome-session-quit")
+  --, ((myModMask .|. shiftMask, xK_Escape), io (exitWith ExitSuccess))
     
+  , ((mod1Mask .|. controlMask, xK_l), spawn "gnome-screensaver-command -l")
     ---------------------------------------------------------------------------
     -- changing sizes
   , ((myModMask .|. shiftMask, xK_h), sendMessage MirrorShrink)
@@ -155,10 +156,15 @@ myKeyBindings =
   -- , ((myModMask .|. shiftMask, xK_Up),    shiftPrevScreen)
   , ((myModMask .|. shiftMask, xK_Down),  swapNextScreen)
   , ((myModMask .|. shiftMask, xK_Up),    swapPrevScreen)
-  , ((myModMask,               xK_backslash), nextScreen)
+  , ((myModMask,               xK_backslash), swapNextScreen >> moveTo Next EmptyWS)
     -- swap this workspace with the workspace on the next screen,
     -- then follow.
-  , ((myModMask .|. shiftMask, xK_backslash), swapNextScreen)
+  , ((myModMask .|. shiftMask, xK_backslash),
+     shiftTo Next (WSIs hiddenEmptyWS) >> prevScreen
+     >> do
+       hs' <- gets $ (flip skipTags) mySpecialWS . skipEmpty . W.hidden . windowset
+       unless (null hs') (windows . W.greedyView . W.tag $ head hs')
+    )
     
     ---------------------------------------------------------------------------
     -- cycling through workspaces
@@ -212,6 +218,12 @@ myKeyBindings =
   , ((myModMask,               xK_F2), sendMessage $ JumpToLayout "Spiral")
   , ((myModMask,               xK_F3), sendMessage $ JumpToLayout "Tabbed Simplest")
   , ((myModMask,               xK_F4), sendMessage $ JumpToLayout "Mirror ResizableTall")
+    
+    ---------------------------------------------------------------------------
+    -- adjusting volume
+  , ((myModMask,               xK_KP_Divide), spawn "amixer -q set Master 3%-")
+  , ((myModMask,               xK_KP_Multiply), spawn "amixer -q set Master 3%+")
+  , ((myModMask,               xK_KP_Subtract), spawn "amixer -q set Master toggle")
     
     ---------------------------------------------------------------------------
     -- show help with keybindings
@@ -309,6 +321,11 @@ myHelp = unlines ["The modifier key is 'Super'.  Keybindings:",
     "mod-button1  Set the window to floating mode and move by dragging",
     "mod-button2  Raise the window to the top of the stack",
     "mod-button3  Set the window to floating mode and resize by dragging",
+    "",
+    "-- Volume control",
+    "mod-kp-divide    Decrease volume",
+    "mod-kp-multiply  Increase Volume",
+    "mod-kp-subtract  Mute",
     "",
     "-- Help",
     "mod-question  Show this help message"]
