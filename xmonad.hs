@@ -63,9 +63,9 @@ myModMask = mod4Mask
 -- Set focused border color
 myFocusedBorderColor = "#00adeb"
 
--- Set up 12 workspaces, where workspaces 1 and 12 are "special"
-myWorkspaces = map show [1..22]
-mySpecialWS  = ["1", "12"]
+-- Set up 23 workspaces, where workspaces 1 and 13--23 are "special"
+myWorkspaces = map show [1..23]
+mySpecialWS  = ["1"] ++ map show [13..23]
 
 ---------------------------------------------------------------------------
 -- Management Hook
@@ -93,8 +93,7 @@ simpleTabbedLayout = simpleTabbed
 
 myLayouts   = emacsDevLayout ||| spiralLayout ||| defaultTallLayout ||| simpleTabbedLayout
 -- Custom rotations of myLayouts for special workspaces
-ws01Layouts  = spiralLayout ||| defaultTallLayout ||| simpleTabbedLayout ||| emacsDevLayout
-ws12Layouts = defaultTallLayout ||| simpleTabbedLayout ||| emacsDevLayout ||| spiralLayout
+specialWSLayouts  = spiralLayout ||| emacsDevLayout ||| defaultTallLayout ||| simpleTabbedLayout
 
 
 ---------------------------------------------------------------------------
@@ -223,7 +222,7 @@ myKeyBindings =
     -- adjusting volume
   , ((myModMask,               xK_KP_Divide), spawn "amixer -q set Master 3%-")
   , ((myModMask,               xK_KP_Multiply), spawn "amixer -q set Master 3%+")
-  , ((myModMask,               xK_KP_Subtract), spawn "amixer -q set Master toggle")
+  , ((myModMask,               xK_KP_Subtract), spawn "amixer -D pulse -q set Master toggle")
     
     ---------------------------------------------------------------------------
     -- show help with keybindings
@@ -234,6 +233,8 @@ myKeys = myKeyBindings ++
   [
     ((m .|. myModMask, k), windows $ f i)
   | (i, k) <- zip myWorkspaces $ [xK_1 .. xK_9] ++ [xK_0, xK_minus, xK_equal]
+              ++ [xK_KP_Insert, xK_KP_Delete, xK_KP_End, xK_KP_Down, xK_KP_Page_Down,
+                  xK_KP_Left, xK_KP_Begin, xK_KP_Right, xK_KP_Home, xK_KP_Up, xK_KP_Page_Up]
   , (f, m) <- [(W.greedyView, 0), (W.shift, shiftMask)]
   ] ++
   [
@@ -392,9 +393,8 @@ xmonad $ gnomeConfig {
       startupHook gnomeConfig
       spawn "~/.xmonad/startup-hook"
   , manageHook = manageDocks <+> myManageHook
-  , layoutHook = avoidStruts $ smartBorders $ 
-                 onWorkspace "1" ws01Layouts $
-                 onWorkspace "12" ws12Layouts $
+  , layoutHook = avoidStruts $ smartBorders $
+                 onWorkspaces mySpecialWS specialWSLayouts $
                  desktopLayoutModifiers (myLayouts)
   , logHook = dynamicLogWithPP $ xmobarPP
               { ppOutput = hPutStrLn xmproc 
@@ -403,3 +403,4 @@ xmonad $ gnomeConfig {
               , ppVisible = xmobarColor myVisibleWSColor ""
               , ppUrgent  = xmobarColor myUrgentWSColor "" }
   } `additionalKeys` myKeys
+
