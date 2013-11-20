@@ -63,9 +63,9 @@ myModMask = mod4Mask
 -- Set focused border color
 myFocusedBorderColor = "#00adeb"
 
--- Set up 23 workspaces, where workspaces 1 and 13--23 are "special"
-myWorkspaces = map show [1..23]
-mySpecialWS  = ["1"] ++ map show [13..23]
+-- Set up 12 workspaces, where workspaces 1 and 12 are "special"
+myWorkspaces = map show [1..12]
+mySpecialWS  = ["1", "12"]
 
 ---------------------------------------------------------------------------
 -- Management Hook
@@ -93,8 +93,7 @@ simpleTabbedLayout = simpleTabbed
 
 myLayouts   = emacsDevLayout ||| spiralLayout ||| defaultTallLayout ||| simpleTabbedLayout
 -- Custom rotations of myLayouts for special workspaces
-specialWSLayouts  = spiralLayout ||| emacsDevLayout ||| defaultTallLayout ||| simpleTabbedLayout
-
+specialWSLayouts = spiralLayout ||| emacsDevLayout ||| defaultTallLayout ||| simpleTabbedLayout
 
 ---------------------------------------------------------------------------
 -- Additional key bindings
