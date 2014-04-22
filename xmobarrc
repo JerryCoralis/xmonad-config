@@ -5,19 +5,36 @@ Config {
   , fgColor = "gray"
   , position = Top
   , lowerOnStart = False
-  , commands = [ Run Weather "KBOS" ["-t","<tempF>F <skyCondition>","-L","32","-H","77",
+  , commands = [ Run Weather "KBOS" ["-t","<tempF>F <skyCondition>",
+                                     "-L","32","-H","77",
                                      "--normal","green","--high","red","--low","lightblue"] 36000
                , Run Wireless "wlan0" ["-t","<essid> <quality>","-p","3",
                                        "-L","20","-H","80",
                                        "--normal","lightblue","--high","green","--low","red"] 10
-               , Run Network "wlan0" ["-L","0","-H","32","--normal","green","--high","red"] 10
-               , Run Network "eth0" ["-L","0","-H","32","--normal","green","--high","red"] 10
-               , Run Network "wmx0" ["-L","0","-H","32","--normal","green","--high","red"] 10
+               , Run DynNetwork [ "-t", "<dev>: <rx> <tx>",
+                                  "-S", "True",
+                                  "-m", "8", "-L", "10", "-H", "1024",
+                                  "--low", "lightblue", "--normal", "green", "--high", "red" ] 10
+               , Run Network "wlan0" ["-m","3","-L","0","-H","32","--normal","green","--high","red"] 10
+               , Run Network "eth0" ["-m","5","-L","0","-H","32","--normal","green","--high","red"] 10
+               , Run Network "wmx0" ["-m","3","-L","0","-H","32","--normal","green","--high","red"] 10
                  -- Gather and format CPU usage information. 
                  -- If it's above 50%, we consider it high usage and make it red.  
-               , Run Cpu [ "-H","50", "--high","red" ] 10
+               , Run MultiCpu [ "-t", "CPU: <autototal>", "-p", "3",
+                                "-L", "25", "-H","75",
+                                "-l", "lightblue",
+                                "-n", "green",
+                                "-h","red" ] 10
                  -- Gather and format memory usage information
-               , Run Memory [ "-t","Mem: <usedratio>%" ] 10
+               , Run Memory [ "-t","Mem: <usedratio>%", "-L", "20", "-H", "80", 
+                              "-l", "lightblue",
+                              "-n", "green", 
+                              "-h", "red" ] 10
+                 -- Gather and format disk IO information
+               , Run DiskIO [ ("/", "/ <total>"), ("/home", "/home <total>"), ("/var", "/var <total>") ]
+                 ["-m", "5",
+                  "-L", "1024", "-H", "32768",
+                  "-l", "lightblue", "-n", "green", "-h", "red" ] 10
                  -- Date formatting
                , Run Date "%a %b %_d %l:%M" "date" 10
                  -- Battery information. This is likely to require some customization
@@ -33,12 +50,12 @@ Config {
                  "-l", "red"
                  ] 10
                  -- Temperature information.
-               , Run CoreTemp ["-t", "(<core0>,<core1>)C",
-                               "-L", "40", "-H", "80",
+               , Run CoreTemp ["-t", "<core0>C",
+                               "-L", "50", "-H", "80",
                                "-l", "lightblue",
                                "-n", "green",
                                "-h", "red"] 30
-               , Run CpuFreq ["-t", "CPU: (<cpu0>,<cpu1>)",
+               , Run CpuFreq ["-t", "CPU: (<cpu0> <cpu4>; <cpu1> <cpu5>; <cpu2> <cpu6>; <cpu3> <cpu7>)",
                               "-L", "0", "-H", "2",
                               "-l", "lightblue",
                               "-n", "green",
@@ -46,7 +63,7 @@ Config {
                  -- To get volume information, we run a custom bash script.
                  -- This is because the built-in volume support in xmobar is disabled
                  -- in Debian and derivatives like Ubuntu. 
-               , Run Com "~/.xmonad/get-volume" [ "--ppad","3" ] "myvolume" 10
+               , Run Com "/home/neboat/.xmonad/get-volume" [ "--ppad","3" ] "myvolume" 10
                --, Run Volume "default" "Master" [] 10
                , Run Brightness [ "-t","<percent>%","--ppad","3" ] 60
                  -- This line tells xmobar to read input from stdin. That's how we
@@ -64,5 +81,6 @@ Config {
    -- Overall template for the layout of the xmobar contents. Note that
    -- space is significant and can be used to add padding.
   --, template = "%StdinReader% }{ %battery% | %cpu% | %memory% | %wlan0% - %eth0% - %eth1% | Vol: %myvolume%    <fc=#e6744c>%date%</fc>| %EGPF% | %uname%"
-  , template = "%StdinReader% }{ %cpufreq% %coretemp% | %battery% | %wlan0wi% | %bright% | Vol: %myvolume%     %KBOS%  <fc=#e6744c>%date%</fc>"
+  --, template = "%StdinReader% }{ %cpufreq% %coretemp% | %battery% | %wlan0wi% | %bright% | Vol: %myvolume%     %KBOS%  <fc=#e6744c>%date%</fc>"
+  , template = "%StdinReader% }{ %cpufreq% %coretemp% | %memory% | %diskio% | %dynnetwork% | <action=gnome-control-center sound>Vol: %myvolume%</action>     %KBOS%  <fc=#e6744c>%date%</fc>"
 }
